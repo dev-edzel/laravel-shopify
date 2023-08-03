@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Traits\FunctionTrait;
+use App\Traits\RequestTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class InstallationController extends Controller
 {   
-    use FunctionTrait;
+    use FunctionTrait, RequestTrait;
+
+    // public $app_scopes = 'write_orders, write_fullfillments,read_all_orders,write_customers,read_locations,write_products';
     public function startInstallation(Request $request)
     {
         try {
@@ -17,7 +20,7 @@ class InstallationController extends Controller
             if($validRequest) {
                 $shop = $request->has('shop');
                 if($shop){
-                    $storeDetails = $this->getStoreByDomain($request->shop);
+                    $storeDetails = $this->getStoreByDomain($request->shop); 
                     if($storeDetails !== null && $storeDetails !== false) {
                         $validAccessToken = $this->checkIfAccessTokenIsValid($storeDetails);
                         if($validAccessToken) {
@@ -25,8 +28,10 @@ class InstallationController extends Controller
                         } else {
                             print_r(('Invalid'));exit;
                         }
-                    } else {
-                        print_r('New Installation');exit;
+                    } else {    
+                        $endpoint = 'https://'.$request->shop.
+                        '/admin/oauth/authorize?client_id='.config('custom.shopify_api_key').'&scope='.config('custom.api_scopes').
+                        '&redirect_uri='.route('app_install_redirect');
                     }
                 } else throw new Exception('Shop parameter not present in the request');
             } else throw new Exception('Request is not valid');
@@ -63,7 +68,12 @@ class InstallationController extends Controller
         try {
             if($storeDetails !== null && isset($storeDetails->access_token) && strlen($storeDetails->access_token) > 0) {
                 $token = $storeDetails->access_token;
-                return true;
+                $endpoint = getShopifyURLForStore('shop.json', $storeDetails);
+                $headers = getShopifyHeadersForStore($storeDetails);
+                $response = $this->makeAnAPICallToShopify('GET', $endpoint, null, $headers, null);
+                Log::info('Response for checking the validity of token');
+                Log::info($response);
+                return $response['statusCode'] === 200;
             }
             return false;
         } catch(Exception $e) {
