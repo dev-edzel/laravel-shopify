@@ -3,14 +3,27 @@
 namespace App\Traits;
 
 use Exception;
+use GuzzleHttp\Client;
 
 trait RequestTrait {
-    public function makeAnAPICallToShopify($url, $params = null, $headers)
+    public function makeAnAPICallToShopify($method = 'GET', $url, $params = null, $headers, $requestBody = null)
     {
         try {
-            $response = new Client();
+            $client = new Client();
+            $response = null;
+            switch($method){
+                case 'GET': $response = $client->request($method, $url, ['headers' => $headers]);break;
+            }
+            return [
+                'statusCode' => $response->getStatusCode(),
+                'body' => $response->getBody()
+            ];
         }catch(Exception $e) {
-            return null;
+            return [
+                'statusCode' => $e->getCode(),
+                'message' => $e->getMessage(),
+                'body' => null
+            ];
         }
     }   
 }
