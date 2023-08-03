@@ -46,9 +46,41 @@ class InstallationController extends Controller
 
     public function handleRedirect(Request $request)
     {
-        
+        try {
+            $validRequest = $this->validateRequestFromShopify($request->all());
+            if($validRequest) {
+                Log::info(json_encode($request->all()));
+                // https://ngrok_url/shopify/auth/redirect?code={code}&timestamp={timestamp}
+                if($request->has('shop') && $request->has('code')) {
+                    $shop = $request->shop;
+                    $code = $request->code;
+                    $accessToken = $this->requestAccessTokenFromShopifyForThisStore($shop, $code);
+                    if($accessToken !== false && $accessToken !== null){
+                        $shopDetails = $this->getShopDetailsFromShopify($accessToken, $shop);
+
+                    } else throw new Exception('Invalid Token'.$accessToken);
+                } else throw new Exception('Code / Shop Invalid');
+            } else throw new Exception('Invalid');
+        } catch(Exception $e) {
+            Log::info($e->getMessage().' '.$e->getLine());
+            dd($e->getMessage().' '.$e->getLine());
+        }
     }
 
+    private function requestAccessTokenFromShopifyForThisStore($shop, $code) {
+        try {
+            $endpoint = getShopifyURLForStore('shop.json', $shop);
+            $headers = ['Content-Type' => 'application/json'];
+            $requestBody = [ 
+                'client_id' => config('custom.shopify.api_key'),
+                'client_secret' => config('custom.shopify.api_secret'),
+                'code' => $code
+            ];
+            $response = $this->makeAnAPICallToShopify('POST', $endpoint, null, $headers, $requestBody);
+        } catch(Exception $e) {
+            return false;
+        }
+    }
     private function validateRequestFromShopify($request) {
         try{
             $arr= [];
