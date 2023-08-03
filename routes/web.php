@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\InstallationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
+// /shopify/auth
+Route::prefix('shopify')->group(function (){
+    Route::get('auth', [InstallationController::class, 'startInstallation']);
 });
