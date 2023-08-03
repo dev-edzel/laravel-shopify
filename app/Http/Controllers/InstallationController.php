@@ -7,6 +7,7 @@ use App\Traits\RequestTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redirect;
 
 class InstallationController extends Controller
 {   
@@ -29,9 +30,11 @@ class InstallationController extends Controller
                             print_r(('Invalid'));exit;
                         }
                     } else {    
+                        Log::info('New Installation for shop' .$request->shop);
                         $endpoint = 'https://'.$request->shop.
                         '/admin/oauth/authorize?client_id='.config('custom.shopify_api_key').'&scope='.config('custom.api_scopes').
-                        '&redirect_uri='.route('app_install_redirect');
+                        '&redirect_uri='.config('app.ngrok_url').'shopify/auth/redirect';
+                        return Redirect::to($endpoint);
                     }
                 } else throw new Exception('Shop parameter not present in the request');
             } else throw new Exception('Request is not valid');
@@ -39,6 +42,11 @@ class InstallationController extends Controller
             Log::info($e->getMessage().' '.$e->getLine());
             dd($e->getMessage(). ' '.$e->getLine());
         }
+    }
+
+    public function handleRedirect(Request $request)
+    {
+        
     }
 
     private function validateRequestFromShopify($request) {
