@@ -16,7 +16,7 @@ if (!function_exists('getShopifyURLForStore')) {
     function getShopifyHeadersForStore($storeDetails) {
         return[
             'Content-Type' => 'application/json',
-            'X-Shopify-Access-Token' => $storeDetails->access_token
+            'X-Shopify-Access-Token' => $storeDetails['access_token']
         ];
     }
 }

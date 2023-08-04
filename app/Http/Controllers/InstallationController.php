@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Store;
 use App\Traits\FunctionTrait;
 use App\Traits\RequestTrait;
 use Exception;
@@ -43,7 +44,6 @@ class InstallationController extends Controller
             dd($e->getMessage(). ' '.$e->getLine());
         }
     }
-
     public function handleRedirect(Request $request)
     {
         try {
@@ -57,7 +57,13 @@ class InstallationController extends Controller
                     $accessToken = $this->requestAccessTokenFromShopifyForThisStore($shop, $code);
                     if($accessToken !== false && $accessToken !== null){
                         $shopDetails = $this->getShopDetailsFromShopify($accessToken, $shop);
-
+                        $saveDetails = $this->saveStoreDetailsToDatabase($shopDetails, $accessToken);
+                        if($saveDetails) {
+                            Redirect::to(config('app.ngrok.url').'shopify/auth/complete');
+                        } else {
+                            Log::info('Error Saving');
+                            Log::info($saveDetails);
+                        }
                     } else throw new Exception('Invalid Token'.$accessToken);
                 } else throw new Exception('Code / Shop Invalid');
             } else throw new Exception('Invalid');
@@ -67,9 +73,56 @@ class InstallationController extends Controller
         }
     }
 
-    private function requestAccessTokenFromShopifyForThisStore($shop, $code) {
+    public function saveStoreDetailsToDatabase($shopDetails, $accessToken)
+    {
+        try {
+            $payload = [
+                'access_token' => $accessToken,
+                'myshopify_domain' => $shopDetails['myshopify_domain'],
+                'id' => $shopDetails['id'],
+                'name' => $shopDetails['name'],
+                'phone' => $shopDetails['phone'],
+                'address1' => $shopDetails['address1'],
+                'address2' => $shopDetails['address2'],
+                'zip' => $shopDetails['zip']
+            ];
+            Store::updateOrCreate(['myshopify_domain' => $shopDetails['myshopify_domain']], $payload);
+            return true;
+        } catch(Exception $e) {
+            Log::info($e->getMessage().' '.$e->getLine());
+            return false;
+        }
+    }    
+
+    public function completeInstallation(Request $request)
+    {
+        print_r('Complete');exit;
+    }
+
+    private function getShopDetailsFromShopify($accessToken, $shop){
         try {
             $endpoint = getShopifyURLForStore('shop.json', $shop);
+            $headers = getShopifyHeadersForStore(['access_token' => $accessToken]);
+            $response = $this->makeAnAPICallToShopify('GET', $endpoint, null, $headers);
+            if($response['statusCode'] == 200) {
+                $body = $response['body'];
+                if(!is_array($body)) $body = json_decode($body, true);
+                return $body['shop'] ?? null;
+            } else {
+                Log::info('Received');
+                Log::info($response);
+                return null;
+            }
+        } catch(Exception $e) {
+            Log::info('Error');
+            Log::info($e->getMessage().' '.$e->getLine());
+            return null;
+        }
+    }
+
+    private function requestAccessTokenFromShopifyForThisStore($shop, $code) {
+        try {
+            $endpoint = 'https://'.$shop.'/admin/oauth/access_token';
             $headers = ['Content-Type' => 'application/json'];
             $requestBody = [ 
                 'client_id' => config('custom.shopify.api_key'),
@@ -77,6 +130,15 @@ class InstallationController extends Controller
                 'code' => $code
             ];
             $response = $this->makeAnAPICallToShopify('POST', $endpoint, null, $headers, $requestBody);
+            Log::info('Valid Token');
+            Log::info(json_encode($response));
+            if($response['statusCode'] == 200){
+                $body = $response['body'];
+                if(!is_array($body)) $body = json_decode($body, true);
+                if(isset($body['access_token']) && $body['access_token'] !==null)
+                return $body['access_token'];
+            }
+            return false;
         } catch(Exception $e) {
             return false;
         }
