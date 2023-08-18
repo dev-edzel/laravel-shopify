@@ -13,7 +13,7 @@ trait RequestTrait {
             $response = null;
             switch($method){
                 case 'GET': $response = $client->request($method, $endpoint, ['headers' => $headers]);break;
-                case 'POST': $RESPONSE = $client->request($method, $endpoint, ['headers' => $headers,'form_params' => $requestBody]);break;
+                case 'POST': $response = $client->request($method, $endpoint, ['headers' => $headers,'json' => $requestBody]);break;
             }
             return [
                 'statusCode' => $response->getStatusCode(),

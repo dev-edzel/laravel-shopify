@@ -56,7 +56,7 @@ class InstallationController extends Controller
                     $code = $request->code;
                     $accessToken = $this->requestAccessTokenFromShopifyForThisStore($shop, $code);
                     if($accessToken !== false && $accessToken !== null){
-                        $shopDetails = $this->getShopDetailsFromShopify($accessToken, $shop);
+                        $shopDetails = $this->getShopDetailsFromShopify($shop, $accessToken);
                         $saveDetails = $this->saveStoreDetailsToDatabase($shopDetails, $accessToken);
                         if($saveDetails) {
                             Redirect::to(config('app.ngrok.url').'shopify/auth/complete');
@@ -64,7 +64,7 @@ class InstallationController extends Controller
                             Log::info('Error Saving');
                             Log::info($saveDetails);
                         }
-                    } else throw new Exception('Invalid Token'.$accessToken);
+                    } else throw new Exception('Invalid Token', $accessToken);
                 } else throw new Exception('Code / Shop Invalid');
             } else throw new Exception('Invalid');
         } catch(Exception $e) {
